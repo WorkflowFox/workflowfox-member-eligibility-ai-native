@@ -1,4 +1,3 @@
-import { BlueprintCorners } from './BlueprintCorners';
 import { AlertTriangleIcon, SearchIcon, SpinnerIcon } from './icons';
 
 /** Nothing checked yet (spec §15). */
@@ -32,7 +31,6 @@ export function LoadingPanel() {
         justifyContent: 'center',
       }}
     >
-      <BlueprintCorners />
       <SpinnerIcon size={18} stroke="var(--color-accent)" />
       <span style={{ font: '600 17px/1.2 var(--font-heading)' }}>Checking eligibility…</span>
     </div>
@@ -49,7 +47,6 @@ interface ErrorPanelProps {
 export function ErrorPanel({ lastMemberId, lastDateLong, onRetry }: ErrorPanelProps) {
   return (
     <div className="blueprint wf-in">
-      <BlueprintCorners />
       <div
         style={{
           display: 'flex',

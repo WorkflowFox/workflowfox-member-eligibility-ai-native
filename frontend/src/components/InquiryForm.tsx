@@ -1,5 +1,4 @@
 import type { RefObject } from 'react';
-import { BlueprintCorners } from './BlueprintCorners';
 import { AlertCircleIcon, SpinnerIcon } from './icons';
 
 interface InquiryFormProps {
@@ -48,7 +47,6 @@ export function InquiryForm({
       noValidate
       style={{ padding: '18px 20px 20px', gap: 0, background: 'transparent' }}
     >
-      <BlueprintCorners />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px 16px', alignItems: 'flex-start' }}>
         <div className="field" style={{ flex: '1 1 250px', minWidth: 200 }}>
           <label htmlFor="memberId">

@@ -1,4 +1,3 @@
-import { BlueprintCorners } from './BlueprintCorners';
 import {
   CheckCircleIcon,
   ClockIcon,
@@ -71,8 +70,6 @@ export function EligibilityResultView({
 
   return (
     <section className="blueprint wf-in">
-      <BlueprintCorners />
-
       <h2
         style={{
           fontSize: 13,
