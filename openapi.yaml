@@ -1,0 +1,495 @@
+openapi: 3.1.0
+
+info:
+  title: WorkflowFox Member Eligibility API
+  version: 1.0.0
+  description: >
+    Read-only eligibility API for the WorkflowFox Member Eligibility AI-Native
+    application.
+
+
+    A single operation answers the question a service representative needs to
+    answer: **is this member covered on this date?** The caller supplies an exact
+    Member ID and a coverage-check date; the API looks up the member and their
+    coverage, applies the deterministic eligibility business rules (BR-001 …
+    BR-006 in `docs/spec.md`), and returns a business outcome plus a
+    plain-language reason and the supporting member and coverage detail.
+
+
+    ## Contract scope
+
+    This document is the explicit agreement between the React frontend
+    (`frontend/src/services/eligibility/`) and the FastAPI backend that will
+    implement it. It mirrors the frontend `EligibilityService` interface:
+    `EligibilityRequest` in, `EligibilityResult` out.
+
+
+    ## Business outcomes vs. technical errors
+
+    The five eligibility statuses — `ELIGIBLE`, `NOT_YET_ELIGIBLE`,
+    `INELIGIBLE`, `MEMBER_NOT_FOUND`, `UNABLE_TO_DETERMINE` — are **business
+    outcomes**. Every one of them is returned as `200 OK` with an
+    `EligibilityResult` body. `MEMBER_NOT_FOUND` in particular is a normal
+    result, not a `404`.
+
+
+    Technical problems — malformed requests, unexpected server faults, an
+    unavailable upstream — are returned as `4xx`/`5xx` with an error body and
+    are surfaced to the representative as a single friendly, retryable message.
+    No stack traces, framework exceptions, database messages, server paths, or
+    internal hostnames are ever included in a response.
+
+
+    ## Data
+
+    All member, plan, and coverage data served by this API is fictional and
+    synthetic. It contains no PHI or PII.
+  contact:
+    name: WorkflowFox Engineering
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:8000
+    description: Local FastAPI development server
+  - url: /
+    description: Same-origin deployment (path prefix only)
+
+tags:
+  - name: Eligibility
+    description: Member coverage eligibility checks (read-only).
+
+paths:
+  /api/eligibility/check:
+    post:
+      tags:
+        - Eligibility
+      summary: Check member eligibility for a coverage date
+      description: >
+        Look up a member by exact Member ID and evaluate whether they have
+        coverage on the supplied date.
+
+
+        Business rules applied:
+
+        - **BR-001** — Member ID is required; blank or whitespace-only is
+          rejected as a validation error before any lookup.
+
+        - **BR-002** — The member is matched on the exact Member ID. There is no
+          fuzzy, partial, or name-based search. Surrounding whitespace is
+          trimmed before matching. An unmatched ID yields `MEMBER_NOT_FOUND`.
+
+        - **BR-003** — `coverageDate` before the effective date yields
+          `NOT_YET_ELIGIBLE`.
+
+        - **BR-004** — `coverageDate` after a present termination date yields
+          `INELIGIBLE`.
+
+        - **BR-005** — `coverageDate` on or after the effective date and on or
+          before the termination date (or with no termination date) yields
+          `ELIGIBLE`. Effective and termination dates are inclusive. A missing
+          termination date means open-ended active coverage.
+
+        - **BR-006** — If required coverage data is missing, invalid, or
+          contradictory (for example: no effective date, an unparseable date, or
+          a termination date earlier than the effective date), the result is
+          `UNABLE_TO_DETERMINE`. The API never guesses or manufactures coverage
+          data to force a decision.
+
+
+        This operation is read-only. It never creates, updates, or deletes
+        members, plans, or coverage.
+      operationId: checkEligibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EligibilityRequest'
+            examples:
+              activeMember:
+                summary: Member with active coverage on the date
+                value:
+                  memberId: WF10001
+                  coverageDate: '2026-09-03'
+              futureCoverage:
+                summary: Member whose coverage has not started yet
+                value:
+                  memberId: WF10003
+                  coverageDate: '2026-09-03'
+      responses:
+        '200':
+          description: >
+            The eligibility check completed. The body is an `EligibilityResult`
+            whose `status` is one of the five business outcomes. This includes
+            `MEMBER_NOT_FOUND` and `UNABLE_TO_DETERMINE`, which are normal
+            outcomes and not errors.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EligibilityResult'
+              examples:
+                eligible:
+                  summary: ELIGIBLE — active coverage on the date
+                  value:
+                    status: ELIGIBLE
+                    reason: The member has active coverage on September 3, 2026.
+                    checkCoverageOn: '2026-09-03'
+                    member:
+                      memberId: WF10001
+                      firstName: Jordan
+                      lastName: Miller
+                    coverage:
+                      planName: Gold PPO
+                      planType: PPO
+                      effectiveDate: '2026-01-01'
+                      terminationDate: '2026-12-31'
+                eligibleOpenEnded:
+                  summary: ELIGIBLE — open-ended coverage, no termination date
+                  value:
+                    status: ELIGIBLE
+                    reason: The member has active coverage on September 3, 2026.
+                    checkCoverageOn: '2026-09-03'
+                    member:
+                      memberId: WF10002
+                      firstName: Alicia
+                      lastName: Nakamura
+                    coverage:
+                      planName: Core HMO
+                      planType: HMO
+                      effectiveDate: '2024-03-15'
+                      terminationDate: null
+                notYetEligible:
+                  summary: NOT_YET_ELIGIBLE — date is before the effective date
+                  value:
+                    status: NOT_YET_ELIGIBLE
+                    reason: Coverage begins on October 1, 2026.
+                    checkCoverageOn: '2026-09-03'
+                    member:
+                      memberId: WF10003
+                      firstName: Devon
+                      lastName: Alvarez
+                    coverage:
+                      planName: Silver PPO
+                      planType: PPO
+                      effectiveDate: '2026-10-01'
+                      terminationDate: null
+                ineligible:
+                  summary: INELIGIBLE — date is after the termination date
+                  value:
+                    status: INELIGIBLE
+                    reason: Coverage ended on August 31, 2026.
+                    checkCoverageOn: '2026-09-03'
+                    member:
+                      memberId: WF10004
+                      firstName: Priya
+                      lastName: Raman
+                    coverage:
+                      planName: Bronze HMO
+                      planType: HMO
+                      effectiveDate: '2025-02-01'
+                      terminationDate: '2026-08-31'
+                memberNotFound:
+                  summary: MEMBER_NOT_FOUND — no member for the exact ID (a business outcome)
+                  value:
+                    status: MEMBER_NOT_FOUND
+                    reason: No member was found for the entered Member ID.
+                    checkCoverageOn: '2026-09-03'
+                unableToDetermine:
+                  summary: UNABLE_TO_DETERMINE — coverage data is inconsistent
+                  value:
+                    status: UNABLE_TO_DETERMINE
+                    reason: >-
+                      The coverage termination date precedes the effective date,
+                      so eligibility cannot be determined.
+                    checkCoverageOn: '2026-09-03'
+                    member:
+                      memberId: WF10005
+                      firstName: Marcus
+                      lastName: Ellery
+                    coverage:
+                      planName: Silver HMO
+                      planType: HMO
+                      effectiveDate: '2026-06-01'
+                      terminationDate: '2026-02-28'
+        '422':
+          description: >
+            The request body is missing required fields or a field is malformed
+            (for example a blank Member ID, or a `coverageDate` that is not a
+            valid `YYYY-MM-DD` calendar date). The frontend validates these
+            cases before calling the API, so a well-behaved client should not
+            trigger this.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                blankMemberId:
+                  summary: Member ID missing or whitespace only
+                  value:
+                    code: VALIDATION_ERROR
+                    message: The request is invalid.
+                    details:
+                      - field: memberId
+                        message: Enter a Member ID.
+                invalidDate:
+                  summary: Coverage date is not a valid calendar date
+                  value:
+                    code: VALIDATION_ERROR
+                    message: The request is invalid.
+                    details:
+                      - field: coverageDate
+                        message: Enter a valid coverage date.
+        '500':
+          description: >
+            An unexpected server error occurred. The eligibility decision, if
+            any, must be discarded — a failure never yields an eligibility
+            result. The client shows a friendly, retryable message.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                internalError:
+                  value:
+                    code: INTERNAL_ERROR
+                    message: We couldn't complete the eligibility check right now.
+        '503':
+          description: >
+            The eligibility service is temporarily unavailable (for example a
+            dependency it relies on cannot be reached). The client shows the same
+            friendly, retryable message as for `500`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                serviceUnavailable:
+                  value:
+                    code: SERVICE_UNAVAILABLE
+                    message: We couldn't complete the eligibility check right now.
+
+components:
+  schemas:
+    EligibilityRequest:
+      type: object
+      description: >
+        An eligibility inquiry. Maps directly to the frontend
+        `EligibilityRequest` interface.
+      additionalProperties: false
+      required:
+        - memberId
+        - coverageDate
+      properties:
+        memberId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '\S'
+          description: >
+            The member's identifier, matched exactly (BR-002). Must contain at
+            least one non-whitespace character (BR-001). Surrounding whitespace
+            is not significant and is trimmed before lookup.
+          examples:
+            - WF10001
+        coverageDate:
+          type: string
+          format: date
+          description: >
+            The date to check coverage for ("Check Coverage On"), as an ISO
+            `YYYY-MM-DD` calendar date. This is a date, not a timestamp. Past,
+            present, and future dates are all allowed.
+          examples:
+            - '2026-09-03'
+
+    EligibilityResult:
+      type: object
+      description: >
+        The outcome of an eligibility check. Maps directly to the frontend
+        `EligibilityResult` interface. `member` and `coverage` are present when
+        the corresponding records exist; they are omitted for `MEMBER_NOT_FOUND`
+        and may be omitted for `UNABLE_TO_DETERMINE` when no coverage record is
+        on file.
+      additionalProperties: false
+      required:
+        - status
+        - reason
+        - checkCoverageOn
+      properties:
+        status:
+          $ref: '#/components/schemas/EligibilityStatus'
+        reason:
+          type: string
+          description: >
+            A concise, plain-language explanation of the result, shown next to
+            the status. Safe to display verbatim; never contains technical
+            detail.
+          examples:
+            - The member has active coverage on September 3, 2026.
+        checkCoverageOn:
+          type: string
+          format: date
+          description: >
+            The coverage-check date the decision was evaluated against. Echoes
+            the request `coverageDate`.
+          examples:
+            - '2026-09-03'
+        member:
+          $ref: '#/components/schemas/Member'
+        coverage:
+          $ref: '#/components/schemas/Coverage'
+
+    EligibilityStatus:
+      type: string
+      description: >
+        The business outcome of an eligibility check. These are the only
+        permitted values and adding a new one requires a specification change.
+
+        - `ELIGIBLE` — the member has active coverage on the requested date.
+
+        - `NOT_YET_ELIGIBLE` — the requested date is before coverage begins.
+
+        - `INELIGIBLE` — the requested date is after coverage ended.
+
+        - `MEMBER_NOT_FOUND` — no member exists for the exact Member ID.
+
+        - `UNABLE_TO_DETERMINE` — the member exists but required coverage data is
+          missing, invalid, or inconsistent, so eligibility cannot be safely
+          determined.
+      enum:
+        - ELIGIBLE
+        - NOT_YET_ELIGIBLE
+        - INELIGIBLE
+        - MEMBER_NOT_FOUND
+        - UNABLE_TO_DETERMINE
+
+    Member:
+      type: object
+      description: >
+        Summary member identity for display. Maps to the frontend
+        `MemberSummary` interface. Present only when a member was found for the
+        Member ID.
+      additionalProperties: false
+      required:
+        - memberId
+        - firstName
+        - lastName
+      properties:
+        memberId:
+          type: string
+          description: The member's exact identifier.
+          examples:
+            - WF10001
+        firstName:
+          type: string
+          examples:
+            - Jordan
+        lastName:
+          type: string
+          examples:
+            - Miller
+
+    Coverage:
+      type: object
+      description: >
+        Summary of the coverage record the decision was based on. Maps to the
+        frontend `CoverageSummary` interface. `effectiveDate` and
+        `terminationDate` are nullable: a null `terminationDate` means open-ended
+        active coverage, and a null `effectiveDate` is an incomplete record that
+        drives an `UNABLE_TO_DETERMINE` result.
+      additionalProperties: false
+      required:
+        - planName
+        - planType
+        - effectiveDate
+        - terminationDate
+      properties:
+        planName:
+          type: string
+          examples:
+            - Gold PPO
+        planType:
+          type: string
+          examples:
+            - PPO
+        effectiveDate:
+          type: [string, 'null']
+          format: date
+          description: >
+            Inclusive first day of coverage, ISO `YYYY-MM-DD`, or null when not
+            on record.
+          examples:
+            - '2026-01-01'
+        terminationDate:
+          type: [string, 'null']
+          format: date
+          description: >
+            Inclusive last day of coverage, ISO `YYYY-MM-DD`, or null for
+            open-ended coverage.
+          examples:
+            - '2026-12-31'
+
+    ApiError:
+      type: object
+      description: >
+        A technical error — distinct from an eligibility business outcome. The
+        `message` is safe to show to the representative. Responses never include
+        stack traces, framework exceptions, database errors, server paths, or
+        internal hostnames.
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: A stable, machine-readable error code.
+          examples:
+            - SERVICE_UNAVAILABLE
+            - INTERNAL_ERROR
+        message:
+          type: string
+          description: A short, friendly, user-safe explanation.
+          examples:
+            - We couldn't complete the eligibility check right now.
+
+    ValidationError:
+      type: object
+      description: >
+        A request-validation failure. Extends the technical error shape with a
+        per-field breakdown so a client could map messages back to form fields.
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: Always `VALIDATION_ERROR` for this response.
+          examples:
+            - VALIDATION_ERROR
+        message:
+          type: string
+          description: A short, user-safe summary of the problem.
+          examples:
+            - The request is invalid.
+        details:
+          type: array
+          description: One entry per invalid field.
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - field
+              - message
+            properties:
+              field:
+                type: string
+                description: The offending request field.
+                examples:
+                  - memberId
+              message:
+                type: string
+                description: A user-safe description of what is wrong with the field.
+                examples:
+                  - Enter a Member ID.

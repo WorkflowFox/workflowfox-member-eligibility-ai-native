@@ -493,14 +493,17 @@ Do not rewrite Git history or perform destructive Git operations unless explicit
 
 # Current Next Step
 
-The frontend prototype is already implemented with a centralized mocked service.
+The frontend prototype is implemented with a centralized mocked service, and the
+frontend/backend contract now exists at `openapi.yaml` (repository root),
+derived from `docs/spec.md` and `frontend/src/services/eligibility/`.
 
 Unless the user gives a different task, the next architectural step is:
 
 ```text
-frontend service contract
-        ↓
 openapi.yaml
+        ↓
+FastAPI backend using an in-memory store
 ```
 
-Do not skip directly to FastAPI or database implementation before the API contract is reviewed.
+Do not begin FastAPI or database implementation until the API contract has been
+reviewed.
