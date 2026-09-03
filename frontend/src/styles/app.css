@@ -1,0 +1,58 @@
+/* App-level styling. Tailwind is available for layout utilities; the component
+   look comes from the Industry design system (industry.css, imported first in
+   main.tsx). Everything below is ported from the "Member Eligibility.dc.html"
+   prototype's <helmet> block. */
+@import 'tailwindcss';
+
+html,
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--color-accent-700);
+}
+a:hover {
+  color: var(--color-accent-800);
+}
+
+@keyframes wf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes wf-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.wf-spin {
+  animation: wf-spin 900ms linear infinite;
+}
+.wf-in {
+  animation: wf-in 160ms ease-out;
+}
+
+/* Prototype bar — dev-only affordance for demoing every eligibility outcome. */
+.wf-demobar button {
+  transition: background-color 120ms ease;
+}
+.wf-demobar button:hover {
+  background: rgba(245, 245, 248, 0.18) !important;
+}
+.wf-demobar button:focus-visible {
+  outline: 2px solid rgba(245, 245, 248, 0.7);
+  outline-offset: 2px;
+}

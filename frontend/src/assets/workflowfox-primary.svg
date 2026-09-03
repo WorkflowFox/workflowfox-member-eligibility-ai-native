@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 160" role="img" aria-label="WorkflowFox">
+  <g transform="translate(20 30)">
+    <path fill="#2563EB" d="M0 66 25 41h38l-12 15H32L15 73v19H0zm27 26 45-55h24L51 92zm31 0 53-65h31l-12 15h-12L77 92zm33 0 31-38h28l-12 15h-9l-19 23z"></path>
+    <path fill="#10B981" d="M130 27h15l9-11h-15z"></path>
+  </g>
+  <text x="205" y="103" fill="#0F172A" font-family="Barlow, Arial, sans-serif" font-size="66" font-weight="650" letter-spacing="-2.8">Workflow<tspan font-weight="430">Fox</tspan></text>
+</svg>
