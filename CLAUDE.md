@@ -493,17 +493,18 @@ Do not rewrite Git history or perform destructive Git operations unless explicit
 
 # Current Next Step
 
-The frontend prototype is implemented with a centralized mocked service, and the
-frontend/backend contract now exists at `openapi.yaml` (repository root),
-derived from `docs/spec.md` and `frontend/src/services/eligibility/`.
+The frontend prototype is implemented with a centralized mocked service, the
+frontend/backend contract exists at `openapi.yaml` (repository root), and a
+FastAPI backend implementing that contract with an in-memory store now exists
+in `backend/`. The frontend has not been connected to it yet.
 
 Unless the user gives a different task, the next architectural step is:
 
 ```text
-openapi.yaml
+FastAPI backend + in-memory store
         ↓
-FastAPI backend using an in-memory store
+Connect React frontend to the real backend
 ```
 
-Do not begin FastAPI or database implementation until the API contract has been
-reviewed.
+Do not begin frontend/backend integration, SQLite/SQLAlchemy persistence, or
+any later-phase infrastructure until explicitly requested.
