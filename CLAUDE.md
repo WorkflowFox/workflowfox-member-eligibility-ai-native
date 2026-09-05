@@ -72,9 +72,13 @@ The frontend prototype exists in:
 
 It is a React + TypeScript application created with Vite.
 
-The frontend currently runs entirely against a mocked eligibility service. There is no real backend yet.
+The frontend now runs against the real FastAPI backend (`backend/`, in-memory
+store) via `ApiEligibilityService`, configured through `VITE_API_BASE_URL`
+(default `http://localhost:8092`). `MockEligibilityService` remains in the
+codebase for tests and isolated frontend development but is no longer used by
+normal local execution.
 
-Do not create a backend, database, Docker configuration, AWS infrastructure, authentication, or unrelated features unless explicitly requested by the current task.
+Do not create a database, Docker configuration, AWS infrastructure, authentication, or unrelated features unless explicitly requested by the current task.
 
 ---
 
@@ -493,18 +497,22 @@ Do not rewrite Git history or perform destructive Git operations unless explicit
 
 # Current Next Step
 
-The frontend prototype is implemented with a centralized mocked service, the
-frontend/backend contract exists at `openapi.yaml` (repository root), and a
-FastAPI backend implementing that contract with an in-memory store now exists
-in `backend/`. The frontend has not been connected to it yet.
+The frontend/backend contract exists at `openapi.yaml` (repository root), a
+FastAPI backend implementing that contract with an in-memory store exists in
+`backend/`, and the React frontend is now integrated with it end-to-end via
+`ApiEligibilityService`.
 
 Unless the user gives a different task, the next architectural step is:
 
 ```text
-FastAPI backend + in-memory store
-        ↓
-Connect React frontend to the real backend
+React frontend
+      ↓
+FastAPI backend
+      ↓
+In-memory store
+      ↓
+NEXT: SQLite + SQLAlchemy persistence
 ```
 
-Do not begin frontend/backend integration, SQLite/SQLAlchemy persistence, or
-any later-phase infrastructure until explicitly requested.
+Do not begin SQLite/SQLAlchemy persistence or any later-phase infrastructure
+until explicitly requested.

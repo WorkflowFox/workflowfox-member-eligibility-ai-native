@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.routers.eligibility import router as eligibility_router
@@ -21,6 +22,21 @@ app = FastAPI(
         "Read-only eligibility API for the WorkflowFox Member Eligibility "
         "AI-Native application."
     ),
+)
+
+# The React/Vite frontend runs on a different local origin than FastAPI, so
+# the browser requires an explicit CORS allowance. Local-dev-only origins;
+# do not widen to allow_origins=["*"] (spec §29, CLAUDE.md Step 7).
+_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_methods=["POST"],
+    allow_headers=["Content-Type"],
 )
 
 app.include_router(eligibility_router)
