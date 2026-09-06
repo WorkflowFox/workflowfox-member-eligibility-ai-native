@@ -1,25 +1,28 @@
-"""FastAPI dependency wiring for the eligibility store/service singletons.
+"""FastAPI dependency wiring for the eligibility store/service.
 
 Kept separate from the router so tests can override `get_store` (via
 `app.dependency_overrides`) with a fixture-controlled store without needing
-HTTP-level mocking.
+HTTP-level mocking. The running app resolves a per-request SQLAlchemy session
+(`get_db_session`) into a `SqlAlchemyEligibilityStore`; nothing above this
+layer knows persistence changed (spec §27, CLAUDE.md Step 5).
 """
 from __future__ import annotations
 
-from functools import lru_cache
-
 from fastapi import Depends
+from sqlalchemy.orm import Session
 
+from app.db.database import get_db_session
 from app.services.eligibility_service import EligibilityService
-from app.store.in_memory_store import InMemoryEligibilityStore
+from app.store.sqlalchemy_store import SqlAlchemyEligibilityStore
 
 
-@lru_cache
-def get_store() -> InMemoryEligibilityStore:
-    return InMemoryEligibilityStore()
+def get_store(
+    session: Session = Depends(get_db_session),
+) -> SqlAlchemyEligibilityStore:
+    return SqlAlchemyEligibilityStore(session)
 
 
 def get_eligibility_service(
-    store: InMemoryEligibilityStore = Depends(get_store),
+    store: SqlAlchemyEligibilityStore = Depends(get_store),
 ) -> EligibilityService:
     return EligibilityService(store)

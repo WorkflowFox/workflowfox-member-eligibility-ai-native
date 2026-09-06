@@ -13,7 +13,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.db.database import init_db
 from app.routers.eligibility import router as eligibility_router
+
+# Idempotent: creates tables if absent and seeds synthetic data only when the
+# store is empty, so restarting the app never duplicates seed records
+# (CLAUDE.md Step 8).
+init_db()
 
 app = FastAPI(
     title="WorkflowFox Member Eligibility API",

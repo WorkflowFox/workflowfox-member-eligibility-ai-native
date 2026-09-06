@@ -72,13 +72,21 @@ The frontend prototype exists in:
 
 It is a React + TypeScript application created with Vite.
 
-The frontend now runs against the real FastAPI backend (`backend/`, in-memory
-store) via `ApiEligibilityService`, configured through `VITE_API_BASE_URL`
-(default `http://localhost:8092`). `MockEligibilityService` remains in the
-codebase for tests and isolated frontend development but is no longer used by
-normal local execution.
+The frontend now runs against the real FastAPI backend (`backend/`) via
+`ApiEligibilityService`, configured through `VITE_API_BASE_URL` (default
+`http://localhost:8092`). `MockEligibilityService` remains in the codebase for
+tests and isolated frontend development but is no longer used by normal local
+execution.
 
-Do not create a database, Docker configuration, AWS infrastructure, authentication, or unrelated features unless explicitly requested by the current task.
+The backend now persists member/plan/coverage data in SQLite via SQLAlchemy
+(`backend/app/db/`) instead of the temporary in-memory store. Connection is
+configured through the `DATABASE_URL` environment variable (default
+`sqlite:///./member_eligibility.db`, see `backend/.env.example`).
+`InMemoryEligibilityStore` remains in the codebase for isolated business-rule
+and service tests but is no longer used by normal local execution;
+`SqlAlchemyEligibilityStore` is what the running app wires up.
+
+Do not create Docker configuration, AWS infrastructure, authentication, PostgreSQL, or Alembic migrations unless explicitly requested by the current task.
 
 ---
 
@@ -498,21 +506,24 @@ Do not rewrite Git history or perform destructive Git operations unless explicit
 # Current Next Step
 
 The frontend/backend contract exists at `openapi.yaml` (repository root), a
-FastAPI backend implementing that contract with an in-memory store exists in
-`backend/`, and the React frontend is now integrated with it end-to-end via
-`ApiEligibilityService`.
+FastAPI backend implementing that contract exists in `backend/`, the React
+frontend is integrated with it end-to-end via `ApiEligibilityService`, and the
+backend now persists data through SQLAlchemy into SQLite instead of an
+in-memory store.
 
-Unless the user gives a different task, the next architectural step is:
+The architecture is now:
 
 ```text
 React frontend
       ↓
 FastAPI backend
       ↓
-In-memory store
+SQLAlchemy
       ↓
-NEXT: SQLite + SQLAlchemy persistence
+SQLite
+      ↓
+NEXT: deployment phase (PostgreSQL, Docker, AWS, CI/CD)
 ```
 
-Do not begin SQLite/SQLAlchemy persistence or any later-phase infrastructure
-until explicitly requested.
+Do not begin PostgreSQL, Docker, AWS, Alembic migrations, or any other
+later-phase infrastructure until explicitly requested.
